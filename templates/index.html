@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en" class="bg-gray-50">
+<head>
+  <meta charset="UTF-8" />
+  <title>ERP Knowledge Assistant</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class'
+    };
+  </script>
+  <style>
+    .spinner {
+      border: 3px solid #ccc;
+      border-top: 3px solid #333;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-gray-50 dark:bg-gray-900 dark:text-white flex flex-col items-center p-4 transition-colors">
+
+  <div class="w-full max-w-6xl flex justify-between items-center mb-4">
+    <h1 class="text-2xl md:text-3xl font-bold">ERP Knowledge Assistant</h1>
+    <button id="toggle-theme" class="text-sm bg-gray-300 dark:bg-gray-700 text-black dark:text-white px-3 py-1 rounded transition">
+      Toggle Dark Mode
+    </button>
+  </div>
+
+  <div class="w-full max-w-6xl flex flex-col md:flex-row gap-6">
+    <!-- Upload Sidebar -->
+    <div class="md:w-1/4 w-full bg-white dark:bg-gray-800 rounded-xl p-4 shadow">
+      <h2 class="text-lg font-semibold mb-2">📄 Upload ERP Docs</h2>
+      <form id="upload-form">
+        <input type="file" id="file-input" name="files" multiple accept=".pdf,.docx,.txt" class="mb-3 w-full" required />
+        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">Upload</button>
+      </form>
+      <div id="upload-status" class="text-sm text-green-400 mt-2"></div>
+      <ul id="file-list" class="text-sm text-gray-700 dark:text-gray-300 mt-2 space-y-1"></ul>
+      <div class="text-xs text-gray-500 dark:text-gray-400 mt-2">Max size: 5MB/file</div>
+    </div>
+
+    <!-- Chat Section -->
+    <div class="md:w-3/4 w-full flex flex-col justify-between bg-white dark:bg-gray-800 rounded-xl p-4 shadow h-[600px]">
+      <div class="flex justify-between items-center mb-2">
+        <h2 class="text-lg md:text-xl font-semibold">🧠 Ask your ERP Assistant</h2>
+        <button id="clear-btn" class="text-sm text-red-500 hover:underline">Clear Chat</button>
+      </div>
+
+      <div id="chat-box" class="flex-1 overflow-y-auto space-y-4 mb-4 border p-3 rounded bg-gray-50 dark:bg-gray-700 text-sm"></div>
+
+      <div class="flex gap-2 mt-2">
+        <input id="question" type="text" placeholder="Ask about SOPs, policies..." class="flex-1 border rounded-lg p-2 dark:bg-gray-900 dark:border-gray-600 dark:text-white" />
+        <button id="ask-btn" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg">Ask</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const chatBox = document.getElementById("chat-box");
+    const questionInput = document.getElementById("question");
+    const askBtn = document.getElementById("ask-btn");
+    const uploadForm = document.getElementById("upload-form");
+    const uploadStatus = document.getElementById("upload-status");
+    const fileInput = document.getElementById("file-input");
+    const fileList = document.getElementById("file-list");
+    const clearBtn = document.getElementById("clear-btn");
+    const toggleThemeBtn = document.getElementById("toggle-theme");
+
+    let chatHistory = [];
+
+    function appendMessage(sender, text) {
+      const timestamp = new Date().toLocaleTimeString();
+      const wrapper = document.createElement("div");
+      wrapper.className = sender === "You" ? "text-right" : "text-left";
+
+      const bubble = document.createElement("div");
+      bubble.className = `inline-block px-4 py-2 rounded-lg max-w-full break-words ${
+        sender === "You" ? "bg-blue-100 dark:bg-blue-900 text-right" : "bg-gray-200 dark:bg-gray-600 text-left"
+      }`;
+
+      bubble.innerHTML = `<strong>${sender}</strong> <span class="text-xs text-gray-500 dark:text-gray-300">(${timestamp})</span><br>${text}`;
+      wrapper.appendChild(bubble);
+      chatBox.appendChild(wrapper);
+      chatBox.scrollTop = chatBox.scrollHeight;
+      chatHistory.push({ sender, text, timestamp });
+    }
+
+    async function sendQuestion() {
+      const question = questionInput.value.trim();
+      if (!question) return;
+
+      appendMessage("You", question);
+      questionInput.value = "";
+
+      const loading = document.createElement("div");
+      loading.className = "text-left";
+      loading.innerHTML = '<div class="spinner"></div>';
+      chatBox.appendChild(loading);
+      chatBox.scrollTop = chatBox.scrollHeight;
+
+      const res = await fetch("/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question }),
+      });
+
+      const { answer, error } = await res.json();
+      chatBox.removeChild(loading);
+      appendMessage("AI", answer || error || "Something went wrong.");
+    }
+
+    askBtn.addEventListener("click", sendQuestion);
+    questionInput.addEventListener("keypress", function (e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        sendQuestion();
+      }
+    });
+
+    uploadForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const formData = new FormData(uploadForm);
+      uploadStatus.textContent = "Uploading...";
+
+      const res = await fetch("/upload", { method: "POST", body: formData });
+      const result = await res.json();
+      uploadStatus.textContent = result.message || result.error || "Unknown response";
+    });
+
+    fileInput.addEventListener("change", () => {
+      fileList.innerHTML = "";
+      for (const file of fileInput.files) {
+        if (file.size > 5 * 1024 * 1024) {
+          uploadStatus.textContent = `❌ ${file.name} is too large (max 5MB).`;
+          fileList.innerHTML = "";
+          return;
+        }
+        const item = document.createElement("li");
+        item.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB, ${file.type || "unknown"})`;
+        fileList.appendChild(item);
+      }
+    });
+
+    clearBtn.addEventListener("click", () => {
+      chatBox.innerHTML = "";
+      chatHistory = [];
+    });
+
+    toggleThemeBtn.addEventListener("click", () => {
+      document.documentElement.classList.toggle("dark");
+    });
+  </script>
+</body>
+</html>
