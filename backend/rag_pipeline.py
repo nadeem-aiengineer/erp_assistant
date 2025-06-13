@@ -5,13 +5,12 @@ from langchain_community.document_loaders import (
     TextLoader,
     UnstructuredWordDocumentLoader,
 )
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain.chains import RetrievalQAWithSourcesChain
+from langchain.prompts import PromptTemplate
 from backend.config import OPENAI_API_KEY
-from langchain.docstore.document import Document
-
 
 
 def cosine_similarity(vec1, vec2):
@@ -19,6 +18,18 @@ def cosine_similarity(vec1, vec2):
     if np.linalg.norm(vec1) == 0 or np.linalg.norm(vec2) == 0:
         return 0
     return np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
+
+
+SYSTEM_INSTRUCTIONS = """
+You are an ERP Knowledge Assistant. You must answer user questions strictly using the information from the retrieved documents.
+
+Rules:
+1. Only use the provided context (documents) to answer.
+2. If the answer is not found in the documents, say: "I don’t know. That question seems unrelated to the uploaded documents."
+3. Do not hallucinate facts, definitions, or processes.
+4. Be concise, clear, and accurate.
+5. If multiple documents provide conflicting answers, indicate this and summarize.
+"""
 
 
 class RAGPipeline:
@@ -67,10 +78,21 @@ class RAGPipeline:
         self.vectorstore = FAISS.from_documents(texts, embeddings)
 
         retriever = self.vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": 3})
+
+        prompt = PromptTemplate(
+            input_variables=["question", "context"],
+            template=SYSTEM_INSTRUCTIONS + "\n\nContext:\n{context}\n\nQuestion:\n{question}\n\nAnswer:"
+        )
+
         self.qa_chain = RetrievalQAWithSourcesChain.from_chain_type(
             llm=ChatOpenAI(openai_api_key=OPENAI_API_KEY),
+            chain_type="stuff",
             retriever=retriever,
-            return_source_documents=True
+            return_source_documents=True,
+            chain_type_kwargs={
+                "prompt": prompt,
+                "document_variable_name": "context"
+            }
         )
 
     def answer_question(self, question: str) -> str:
@@ -81,7 +103,6 @@ class RAGPipeline:
             embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
             question_vector = embeddings.embed_query(question)
 
-            # Get top docs and score similarity
             docs_with_scores = self.vectorstore.similarity_search_with_score(question, k=3)
             docs = [doc for doc, score in docs_with_scores]
             doc_texts = [doc.page_content for doc in docs]
@@ -95,15 +116,13 @@ class RAGPipeline:
             if not similarities or max(similarities) < 0.75:
                 return "I don’t know. That question seems unrelated to the uploaded documents."
 
-            result = self.qa_chain({"question": question})
+            result = self.qa_chain.invoke({"question": question})
             answer = result.get("answer", "").strip()
 
             if not answer or answer.lower().startswith("i don't know"):
                 return "I don’t know. That question seems unrelated to the uploaded documents."
 
-            return answer
+            return answer  # ✅ Final answer, without "Answer generated..." suffix
         except Exception as e:
             print("[ERROR] Failed to answer question:", e)
             return "An error occurred while processing your question."
-
-

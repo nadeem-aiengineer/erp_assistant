@@ -1,109 +1,99 @@
 
-# 🧠 ERP Knowledge Assistant (GenAI + RAG)
+# ERP Knowledge Assistant (GenAI + RAG)
 
-An AI-powered assistant for manufacturing or ERP-heavy teams to interact with documents like:
-- SAP or Oracle ERP documentation
-- Company policy manuals
-- SOPs and production processes
+An AI-powered assistant designed to help manufacturing or ERP-heavy organizations interact with their internal documents, such as:
+- SAP or Oracle ERP manuals
+- Company policies
+- SOPs and production workflows
 
 Built with: **Python, Flask, LangChain, FAISS, OpenAI GPT-4o**, and **Tailwind CSS**
 
 ---
 
-## 📸 Features
+## Motivation
 
-- 📁 Upload ERP documents (PDF, DOCX, TXT — up to 100MB)
-- 💬 Ask natural language questions like:
-  - “What’s the SOP for downtime events?”
-  - “Where do I file a BOM discrepancy?”
-- 🧠 Answers come from GPT-4o using document-aware RAG (Retrieval-Augmented Generation)
-- 💡 Modern, mobile-friendly UI with chat bubbles and dark mode
+This project was developed as part of the technical assessment for the GenAI Solutions Developer role at Syntax. The primary motivation for choosing this idea was its close alignment with Syntax’s core focus on enterprise technology and ERP systems.
+
+Rather than building a generic GenAI demo, the goal was to address a real-world challenge that Syntax’s clients frequently encounter: extracting meaningful insights from large, unstructured ERP documentation. This assistant showcases how Retrieval-Augmented Generation (RAG) can be effectively combined with a lightweight Flask backend to deliver grounded, context-aware answers using client-specific content.
+
+By strictly limiting responses to uploaded documents, the system reflects enterprise expectations around accuracy, traceability, and compliance — key factors in ERP and manufacturing domains. The result is a focused, deployable solution that demonstrates both technical proficiency and business relevance.
 
 ---
 
-## 🔧 Tech Stack
+## Features
+
+- Upload ERP-related documents (PDF, DOCX, TXT — up to 100MB)
+- A sample PDF file is included in the `upload/` folder to test the functionality out-of-the-box.
+- Example questions you can ask based on the sample document:
+  - What are the three main segments of vendor master data?
+  - What are the basic principles and objectives of General Ledger Accounting in SAP?
+  - What is the difference between a company code and a controlling area?
+- Responses are generated using GPT-4o, grounded strictly in the uploaded documents
+- Clean and responsive chat-style user interface
+
+---
+
+## Tech Stack
 
 - **Backend**: Flask, LangChain, FAISS, OpenAI
 - **Frontend**: TailwindCSS, Vanilla JS
-- **RAG Logic**: LangChain’s `RetrievalQA` over embedded docs
+- **RAG Logic**: LangChain’s `RetrievalQA` over embedded document vectors
 
 ---
 
-## 🖥️ Setup Instructions
+## Setup Instructions
 
-### 1. Clone the repo
-
-```bash
-git clone https://github.com/yourusername/erp-knowledge-assistant.git
-cd erp-knowledge-assistant
-```
-
-### 2. Create a virtual environment
+### 1. Clone the Repository
 
 ```bash
-python -m venv venv
-source venv/bin/activate  # (use venv\Scripts\activate on Windows)
+git clone https://github.com/nadeem-aiengineer/erp_assistant.git
+cd erp-assistant
 ```
 
-### 3. Install dependencies
+### 2. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. Add your OpenAI API key
+### 3. Set Environment Variables
 
-Create a file named `.env` in the `backend` folder:
+Create a `.env` file with your API keys:
 
-```env
-OPENAI_API_KEY=your_openai_api_key_here
+```
+OPENAI_API_KEY=your_openai_key_here
 ```
 
-> ✅ You can get your key from https://platform.openai.com/account/api-keys
-
-### 5. Run the app
+### 4. Run the App
 
 ```bash
 python app.py
 ```
 
-The app will be available at: [http://localhost:5000](http://localhost:5000)
+---
+
+## Docker Support
+
+To build and run the app with Docker:
+
+```bash
+docker compose up --build
+```
 
 ---
 
-## ✅ How to Use
+## Notes
 
-1. Upload one or more ERP documents
-2. Ask questions in natural language (related to the uploaded content)
-3. The assistant will answer ONLY from those documents
-4. Clear chat or switch theme using the sidebar
+- The assistant will only respond if it finds answers grounded in the uploaded documents.
+- File size limit: 100MB
+- Supported file types: PDF, DOCX, TXT
 
----
-
-## 📂 Folder Structure
-
-```
-erp-knowledge-assistant/
-│
-├── app.py                   # Flask app
-├── backend/
-│   ├── rag_pipeline.py      # RAG logic (LangChain)
-│   ├── utils.py             # Helper functions
-│   └── config.py            # OpenAI key config
-│
-├── templates/
-│   └── index.html           # Frontend UI (Tailwind-based)
-│
-├── uploads/                 # Stores uploaded documents
-├── requirements.txt
-└── README.md
-```
 
 ---
 
 ## 🙋 Need Help?
 
-If anything breaks, contact `muhammad.nadeem@example.com` or open an issue on the repo.
+If anything breaks, contact `nadeem.engineer.ai@gmail.com` or open an issue on the repo.
 
 ---
 

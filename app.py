@@ -1,9 +1,14 @@
 from flask import Flask, render_template, request, jsonify
 from backend.rag_pipeline import RAGPipeline
 from backend.utils import save_uploaded_files
+from werkzeug.exceptions import RequestEntityTooLarge
 import os
 
 app = Flask(__name__)
+
+# ✅ Set maximum upload size to 100 MB
+app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100 MB
+
 UPLOAD_FOLDER = "uploads"
 rag_pipeline = RAGPipeline()
 
@@ -37,7 +42,13 @@ def ask():
     except Exception as e:
         return jsonify({"error": f"❌ Error: {str(e)}"}), 500
 
+# ✅ Handle file too large error
+@app.errorhandler(RequestEntityTooLarge)
+def handle_large_file_error(e):
+    return jsonify({"error": "❌ File too large. Maximum allowed size is 100 MB."}), 413
+
 if __name__ == "__main__":
     if not os.path.exists(UPLOAD_FOLDER):
         os.makedirs(UPLOAD_FOLDER)
-    app.run(debug=True, use_reloader=False)
+    app.run(debug=True, use_reloader=False, host="0.0.0.0", port=5000)
+

@@ -4,6 +4,7 @@
 
 # Virtual Environment
 venv/
+.venv/
 env/
 ENV/
 
@@ -36,11 +37,7 @@ wheels/
 *.swo
 .DS_Store
 
-# Uploaded files
-uploads/
-*.pdf
-*.txt
-*.docx
+
 
 # Logs
 *.log

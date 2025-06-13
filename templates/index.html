@@ -25,18 +25,18 @@
     }
   </style>
 </head>
-<body class="min-h-screen bg-gray-50 dark:bg-gray-900 dark:text-white flex flex-col items-center p-4 transition-colors">
+<body class="min-h-screen bg-gray-50 dark:bg-gray-900 dark:text-white flex flex-col items-center p-4 transition-colors" onload="questionInput.focus()">
 
   <div class="w-full max-w-6xl flex justify-between items-center mb-4">
     <h1 class="text-2xl md:text-3xl font-bold">ERP Knowledge Assistant</h1>
-    <button id="toggle-theme" class="text-sm bg-gray-300 dark:bg-gray-700 text-black dark:text-white px-3 py-1 rounded transition">
+    <button id="toggle-theme" class="text-sm bg-gray-300 dark:bg-gray-700 text-black dark:text-white px-3 py-1 rounded transition" title="Toggle between light and dark mode">
       Toggle Dark Mode
     </button>
   </div>
 
   <div class="w-full max-w-6xl flex flex-col md:flex-row gap-6">
     <!-- Upload Sidebar -->
-    <div class="md:w-1/4 w-full bg-white dark:bg-gray-800 rounded-xl p-4 shadow">
+    <div class="md:w-1/4 w-full bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-lg">
       <h2 class="text-lg font-semibold mb-2">📄 Upload ERP Docs</h2>
       <form id="upload-form">
         <input type="file" id="file-input" name="files" multiple accept=".pdf,.docx,.txt" class="mb-3 w-full" required />
@@ -44,20 +44,25 @@
       </form>
       <div id="upload-status" class="text-sm text-green-400 mt-2"></div>
       <ul id="file-list" class="text-sm text-gray-700 dark:text-gray-300 mt-2 space-y-1"></ul>
-      <div class="text-xs text-gray-500 dark:text-gray-400 mt-2">Max size: 5MB/file</div>
+      <div class="text-xs text-gray-500 dark:text-gray-400 mt-2">Max size: 100MB/file</div>
     </div>
 
     <!-- Chat Section -->
-    <div class="md:w-3/4 w-full flex flex-col justify-between bg-white dark:bg-gray-800 rounded-xl p-4 shadow h-[600px]">
+    <div class="md:w-3/4 w-full flex flex-col justify-between bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-lg h-[600px]">
       <div class="flex justify-between items-center mb-2">
-        <h2 class="text-lg md:text-xl font-semibold">🧠 Ask your ERP Assistant</h2>
-        <button id="clear-btn" class="text-sm text-red-500 hover:underline">Clear Chat</button>
+        <div>
+          <h2 class="text-lg md:text-xl font-semibold">🧠 Ask your ERP Assistant</h2>
+          <span class="text-xs text-gray-500 dark:text-gray-400">Session active · Docs loaded</span>
+        </div>
+        <button id="clear-btn" class="text-sm text-red-500 hover:underline" title="Clear the conversation">Clear Chat</button>
       </div>
 
-      <div id="chat-box" class="flex-1 overflow-y-auto space-y-4 mb-4 border p-3 rounded bg-gray-50 dark:bg-gray-700 text-sm"></div>
+      <div id="chat-box" class="flex-1 overflow-y-auto space-y-4 mb-4 border p-3 rounded bg-gray-50 dark:bg-gray-700 text-sm">
+        <p class="text-center text-gray-400 mt-10">No messages yet. Start by asking a question!</p>
+      </div>
 
       <div class="flex gap-2 mt-2">
-        <input id="question" type="text" placeholder="Ask about SOPs, policies..." class="flex-1 border rounded-lg p-2 dark:bg-gray-900 dark:border-gray-600 dark:text-white" />
+        <input id="question" type="text" placeholder="Ask about SOPs, policies... (press Enter to send)" class="flex-1 border rounded-lg p-2 dark:bg-gray-900 dark:border-gray-600 dark:text-white" />
         <button id="ask-btn" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg">Ask</button>
       </div>
     </div>
@@ -82,11 +87,17 @@
       wrapper.className = sender === "You" ? "text-right" : "text-left";
 
       const bubble = document.createElement("div");
-      bubble.className = `inline-block px-4 py-2 rounded-lg max-w-full break-words ${
+      bubble.className = `inline-block px-4 py-2 rounded-2xl max-w-full break-words shadow-md ${
         sender === "You" ? "bg-blue-100 dark:bg-blue-900 text-right" : "bg-gray-200 dark:bg-gray-600 text-left"
       }`;
 
-      bubble.innerHTML = `<strong>${sender}</strong> <span class="text-xs text-gray-500 dark:text-gray-300">(${timestamp})</span><br>${text}`;
+      bubble.innerHTML = `
+        <div class="flex items-center gap-2">
+          <strong>${sender === "You" ? "🧑‍💻 You" : "🤖 AI"}</strong>
+          <span class="text-xs text-gray-500">${timestamp}</span>
+        </div>
+        <div class="mt-1">${text}</div>
+      `;
       wrapper.appendChild(bubble);
       chatBox.appendChild(wrapper);
       chatBox.scrollTop = chatBox.scrollHeight;
@@ -102,7 +113,7 @@
 
       const loading = document.createElement("div");
       loading.className = "text-left";
-      loading.innerHTML = '<div class="spinner"></div>';
+      loading.innerHTML = '<div class="spinner"></div><span class="ml-2 text-sm">Generating response...</span>';
       chatBox.appendChild(loading);
       chatBox.scrollTop = chatBox.scrollHeight;
 
@@ -129,28 +140,31 @@
       e.preventDefault();
       const formData = new FormData(uploadForm);
       uploadStatus.textContent = "Uploading...";
+      uploadStatus.className = "text-sm text-yellow-500";
 
       const res = await fetch("/upload", { method: "POST", body: formData });
       const result = await res.json();
       uploadStatus.textContent = result.message || result.error || "Unknown response";
+      uploadStatus.className = result.error ? "text-sm text-red-500" : "text-sm text-green-500";
     });
 
     fileInput.addEventListener("change", () => {
       fileList.innerHTML = "";
       for (const file of fileInput.files) {
-        if (file.size > 5 * 1024 * 1024) {
-          uploadStatus.textContent = `❌ ${file.name} is too large (max 5MB).`;
+        if (file.size > 100 * 1024 * 1024) {
+          uploadStatus.textContent = `❌ ${file.name} is too large (max 100MB).`;
+          uploadStatus.className = "text-sm text-red-500";
           fileList.innerHTML = "";
           return;
         }
         const item = document.createElement("li");
-        item.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB, ${file.type || "unknown"})`;
+        item.textContent = `${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB, ${file.type || "unknown"})`;
         fileList.appendChild(item);
       }
     });
 
     clearBtn.addEventListener("click", () => {
-      chatBox.innerHTML = "";
+      chatBox.innerHTML = '<p class="text-center text-gray-400 mt-10">No messages yet. Start by asking a question!</p>';
       chatHistory = [];
     });
 
